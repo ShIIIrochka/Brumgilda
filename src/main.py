@@ -20,7 +20,9 @@ async def _run() -> None:
     try:
         bot = Bot(config.telegram_bot_token)
         dp = Dispatcher(storage=MemoryStorage())
-        dp.update.middleware(AppMiddleware(session_factory))
+        # В update-middleware приходит Update, а не Message — user_id не выставлялся.
+        dp.message.middleware(AppMiddleware(session_factory))
+        dp.callback_query.middleware(AppMiddleware(session_factory))
         dp.include_router(onboarding_handlers.router)
         await dp.start_polling(bot)
     finally:

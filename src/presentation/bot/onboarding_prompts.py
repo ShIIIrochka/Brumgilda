@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
@@ -7,10 +8,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State
 from aiogram.types import Message
 from punq import Container
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.directions.repository import IDirectionRepository
+from src.infra.database.directions_seed import ensure_directions_seed
 from src.presentation.bot import keyboards as kb
 from src.presentation.bot.states import Onboarding
+
+logger = logging.getLogger(__name__)
 
 PromptSender = Callable[[Message, FSMContext, Container, UUID], Awaitable[None]]
 
@@ -30,11 +35,26 @@ async def _p_last_name(
 async def _p_direction_pick(
     target: Message, state: FSMContext, c: Container, _uid: UUID
 ) -> None:
+    session = c.resolve(AsyncSession)
+    await ensure_directions_seed(session)
+    await session.flush()
+
     dirs = c.resolve(IDirectionRepository)
     roots = await dirs.list_roots()
     await state.update_data(view_parent_id=None)
+
+    if not roots:
+        logger.error(
+            "Таблица directions пуста после сида — проверьте БД и миграции (alembic upgrade head)."
+        )
+        await target.answer(
+            "Список направлений временно недоступен. Попробуйте позже или напишите /start ещё раз. "
+            "Если вы администратор: выполните миграции и убедитесь, что в таблице directions есть записи."
+        )
+        return
+
     await target.answer(
-        "Выберите направление:",
+        "Выберите направление — кнопки отображаются прямо под этим сообщением (не в поле ввода).",
         reply_markup=kb.directions_keyboard(roots, show_back=False),
     )
 
