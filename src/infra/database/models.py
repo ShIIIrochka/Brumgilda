@@ -70,7 +70,7 @@ class UserModel(Base):
     team_seeking_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     telegram_avatar_file_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    avatar_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    telegram_username: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     identities: Mapped[list[UserIdentityModel]] = relationship(
         "UserIdentityModel", back_populates="user", cascade="all, delete-orphan"

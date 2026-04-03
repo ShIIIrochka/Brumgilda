@@ -34,7 +34,7 @@ class User:
         team_seeking_mode: TeamSeekingMode | None = None,
         age: int | None = None,
         telegram_avatar_file_id: str | None = None,
-        avatar_url: str | None = None,
+        telegram_username: str | None = None,
     ) -> None:
         self.id = id
         self.onboarding_completed_at = onboarding_completed_at
@@ -55,7 +55,7 @@ class User:
         self.team_seeking_mode = team_seeking_mode
         self.age = age
         self.telegram_avatar_file_id = telegram_avatar_file_id
-        self.avatar_url = avatar_url
+        self.telegram_username = telegram_username
 
     @classmethod
     def create_new(cls) -> User:

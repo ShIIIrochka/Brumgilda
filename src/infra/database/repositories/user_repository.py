@@ -39,6 +39,8 @@ class SqlAlchemyUserRepository:
             base = base.where(UserModel.direction_id == fltr.direction_id)
         if fltr.user_status is not None:
             base = base.where(UserModel.user_status == fltr.user_status.value)
+        if fltr.specialty_query:
+            base = base.where(UserModel.specialty.ilike(f"%{fltr.specialty_query}%"))
 
         count_q = select(func.count()).select_from(base.subquery())
         total = (await self._session.execute(count_q)).scalar_one()
@@ -63,7 +65,7 @@ def _to_entity(row: UserModel) -> User:
         last_name=row.last_name,
         age=row.age,
         telegram_avatar_file_id=row.telegram_avatar_file_id,
-        avatar_url=row.avatar_url,
+        telegram_username=row.telegram_username,
         direction_id=row.direction_id,
         custom_direction_label=row.custom_direction_label,
         user_status=UserStatus(row.user_status) if row.user_status else None,
@@ -86,7 +88,7 @@ def _to_row(user: User, row: UserModel) -> None:
     row.last_name = user.last_name
     row.age = user.age
     row.telegram_avatar_file_id = user.telegram_avatar_file_id
-    row.avatar_url = user.avatar_url
+    row.telegram_username = user.telegram_username
     row.direction_id = user.direction_id
     row.custom_direction_label = user.custom_direction_label
     row.user_status = user.user_status.value if user.user_status else None

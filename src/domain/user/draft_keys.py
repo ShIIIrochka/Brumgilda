@@ -17,6 +17,5 @@ OLYMPIAD_DESCRIPTION = "olympiad_description"
 OLYMPIAD_LINKS = "olympiad_links"
 TEAM_SEEKING_MODE = "team_seeking_mode"
 AGE = "age"
-# Профиль после онбординга / REST (не поля черновика онбординга)
+# Профиль после онбординга (не поля черновика онбординга)
 TELEGRAM_AVATAR_FILE_ID = "telegram_avatar_file_id"
-AVATAR_URL = "avatar_url"

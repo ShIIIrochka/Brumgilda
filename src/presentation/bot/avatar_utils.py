@@ -1,4 +1,4 @@
-"""Аватар: URL (REST), file_id Telegram, live-запрос по identity, без жёсткой привязки к одному каналу."""
+"""Shared avatar/photo utilities for profile and search cards."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import logging
 import os
 from uuid import UUID
 
-from aiogram.types import BufferedInputFile, FSInputFile, URLInputFile
+from aiogram.types import BufferedInputFile, FSInputFile
 from punq import Container
 
 from src.application.usecases.user.update_user_profile import UpdateUserProfile
@@ -20,24 +20,36 @@ logger = logging.getLogger(__name__)
 _ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets")
 DEFAULT_AVATAR_PATH = os.path.normpath(os.path.join(_ASSETS_DIR, "default_avatar.png"))
 
-# Минимальный 1×1 PNG, если файла в assets нет
-_MIN_PNG = (
-    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06"
-    b"\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00\x01\x00\x00\x05\x00\x01\r\n-\xb4"
-    b"\x00\x00\x00\x00IEND\xaeB`\x82"
-)
-
-
-def default_photo_input() -> FSInputFile | BufferedInputFile:
-    if os.path.isfile(DEFAULT_AVATAR_PATH):
-        return FSInputFile(DEFAULT_AVATAR_PATH)
-    return BufferedInputFile(_MIN_PNG, filename="avatar.png")
+# Cached Telegram file_id for the default avatar (set after first upload)
+_cached_placeholder_file_id: str | None = None
 
 
 def format_age_caption(user: User) -> str:
     if user.age is None:
         return "возраст не указан"
     return f"{user.age} лет"
+
+
+def default_photo_input() -> FSInputFile | BufferedInputFile | str:
+    global _cached_placeholder_file_id
+    if _cached_placeholder_file_id:
+        return _cached_placeholder_file_id
+    if os.path.isfile(DEFAULT_AVATAR_PATH):
+        return FSInputFile(DEFAULT_AVATAR_PATH)
+    # Minimal 1x1 PNG fallback
+    return BufferedInputFile(
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+        b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00"
+        b"\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00"
+        b"\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82",
+        filename="avatar.png",
+    )
+
+
+def cache_placeholder_file_id(file_id: str) -> None:
+    """Call after first successful send of placeholder to cache its file_id."""
+    global _cached_placeholder_file_id
+    _cached_placeholder_file_id = file_id
 
 
 async def fetch_telegram_profile_photo_file_id(bot, telegram_user_id: int) -> str | None:
@@ -72,13 +84,12 @@ async def resolve_photo_for_card(
     bot,
     container: Container,
     subject_user: User,
-) -> FSInputFile | BufferedInputFile | URLInputFile | str:
-    if subject_user.avatar_url and subject_user.avatar_url.strip():
-        return URLInputFile(subject_user.avatar_url.strip())
-
+) -> FSInputFile | BufferedInputFile | str:
+    # 1. Already have cached file_id
     if subject_user.telegram_avatar_file_id:
         return subject_user.telegram_avatar_file_id
 
+    # 2. Try to fetch from Telegram via identity
     identities = container.resolve(IUserIdentityRepository)
     sid = await identities.find_subject_id_for_user(subject_user.id, IdentityProvider.TELEGRAM)
     if sid:
@@ -86,4 +97,5 @@ async def resolve_photo_for_card(
         if fid:
             return fid
 
+    # 3. Default placeholder
     return default_photo_input()

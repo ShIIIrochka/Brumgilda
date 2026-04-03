@@ -55,7 +55,10 @@ def _build_profile_caption(user: User, direction_name: str | None) -> str:
     lines: list[str] = []
     fn = user.first_name or "—"
     ln = user.last_name or "—"
-    lines.append(f"{fn} {ln}, {format_age_caption(user)}")
+    name_line = f"{fn} {ln}, {format_age_caption(user)}"
+    if user.telegram_username:
+        name_line += f"  @{user.telegram_username}"
+    lines.append(name_line)
     dir_label = direction_name or user.custom_direction_label or "—"
     lines.append(f"Направление: {dir_label}")
     if user.user_status:

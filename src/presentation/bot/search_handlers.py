@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import os
 from uuid import UUID
 
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, FSInputFile, Message
 from punq import Container
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,10 +18,12 @@ from src.domain.user.user import User
 from src.domain.user.value_objects import SearchFilter
 from src.infra.database.directions_seed import ensure_directions_seed
 from src.presentation.bot import keyboards as kb
-from src.presentation.bot.avatar_utils import format_age_caption, resolve_photo_for_card
 from src.presentation.bot.states import Search
 
 router = Router(name="search")
+
+_ASSETS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "assets")
+_DEFAULT_AVATAR = os.path.normpath(os.path.join(_ASSETS_DIR, "default_avatar.png"))
 
 _STATUS_LABELS = {
     UserStatus.SCHOOL: "Школьник",
@@ -37,9 +40,10 @@ _MODE_LABELS = {
 
 def _build_card_caption(user: User, direction_name: str | None) -> str:
     lines: list[str] = []
-    fn = user.first_name or "—"
-    ln = user.last_name or "—"
-    lines.append(f"{fn} {ln}, {format_age_caption(user)}")
+    name_line = f"{user.first_name} {user.last_name}, {user.age} лет"
+    if user.telegram_username:
+        name_line += f"  @{user.telegram_username}"
+    lines.append(name_line)
     dir_label = direction_name or user.custom_direction_label or "—"
     lines.append(f"Направление: {dir_label}")
     if user.user_status:
@@ -65,6 +69,12 @@ def _build_card_caption(user: User, direction_name: str | None) -> str:
     return "\n".join(lines)
 
 
+async def _get_avatar(user: User, bot, container: Container) -> FSInputFile | str:
+    if user.telegram_avatar_file_id:
+        return user.telegram_avatar_file_id
+    return FSInputFile(_DEFAULT_AVATAR)
+
+
 async def _show_result(
     target: Message,
     container: Container,
@@ -88,9 +98,12 @@ async def _show_result(
         else TeamSeekingMode.LOOKING_FOR_PEOPLE
     )
 
+    specialty_q = data.get("search_specialty")
+
     fltr = SearchFilter(
         direction_id=UUID(direction_id) if direction_id else None,
         user_status=UserStatus(status_raw) if status_raw else None,
+        specialty_query=specialty_q or None,
         exclude_user_id=user_id,
         seeking_mode=opposite_mode,
     )
@@ -111,7 +124,7 @@ async def _show_result(
             direction_name = d.name
 
     caption = _build_card_caption(found_user, direction_name)
-    photo = await resolve_photo_for_card(bot, container, found_user)
+    photo = await _get_avatar(found_user, bot, container)
     pagination = kb.search_pagination_keyboard(offset, result.total)
 
     await target.answer_photo(photo=photo, caption=caption, reply_markup=pagination)
@@ -136,7 +149,7 @@ async def cmd_search(
     dirs = container.resolve(IDirectionRepository)
     roots = await dirs.list_roots()
     await state.set_state(Search.pick_direction)
-    await state.update_data(search_direction_id=None, search_status=None, search_offset=0)
+    await state.update_data(search_direction_id=None, search_status=None, search_specialty=None, search_offset=0)
     await message.answer(
         "Поиск сокомандников. Выберите направление:",
         reply_markup=kb.search_direction_keyboard(roots, show_back=False),
@@ -213,8 +226,28 @@ async def on_search_status(
     raw = (cq.data or "")[4:]
     status_val = None if raw == "any" else raw
     await state.update_data(search_status=status_val, search_offset=0)
+    if status_val in (UserStatus.STUDENT.value, UserStatus.MASTER.value):
+        await state.set_state(Search.pick_specialty)
+        await cq.message.answer(
+            "Введите специальность для поиска (или отправьте «-» чтобы пропустить):"
+        )
+        return
+    await state.update_data(search_specialty=None)
     await state.set_state(Search.browsing)
     await _show_result(cq.message, container, state, cq.bot, user_id)
+
+
+@router.message(Search.pick_specialty, F.text)
+async def on_search_specialty(
+    message: Message, state: FSMContext, container: Container, user_id: UUID | None
+) -> None:
+    if user_id is None:
+        return
+    text = (message.text or "").strip()
+    spec_val = None if text == "-" else text
+    await state.update_data(search_specialty=spec_val, search_offset=0)
+    await state.set_state(Search.browsing)
+    await _show_result(message, container, state, message.bot, user_id)
 
 
 @router.callback_query(Search.browsing, F.data == "spg:prev")

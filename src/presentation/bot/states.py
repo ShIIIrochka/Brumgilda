@@ -39,4 +39,5 @@ class ProfileEdit(StatesGroup):
 class Search(StatesGroup):
     pick_direction = State()
     pick_status = State()
+    pick_specialty = State()
     browsing = State()
