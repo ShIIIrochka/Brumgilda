@@ -67,8 +67,9 @@ async def cmd_start(
         return
     if user.is_onboarding_complete:
         await message.answer(
-            f"С возвращением, {user.first_name}! Профиль заполнен. "
-            "Редактирование профиля можно добавить отдельной командой позже."
+            f"С возвращением, {user.first_name}! Профиль заполнен.\n"
+            "/profile — посмотреть и отредактировать профиль\n"
+            "/search — найти сокомандника"
         )
         return
     dirs = container.resolve(IDirectionRepository)
@@ -116,6 +117,20 @@ async def on_last_name(
     if user_id is None:
         return
     await _patch(container, user_id, {dk.LAST_NAME: message.text.strip()})
+    await _advance(message, state, container, user_id)
+
+
+@router.message(Onboarding.age, F.text)
+async def on_age(
+    message: Message, state: FSMContext, container: Container, user_id: UUID | None
+) -> None:
+    if user_id is None:
+        return
+    text = (message.text or "").strip()
+    if not text.isdigit() or not (10 <= int(text) <= 100):
+        await message.answer("Введите число от 10 до 100.")
+        return
+    await _patch(container, user_id, {dk.AGE: int(text)})
     await _advance(message, state, container, user_id)
 
 

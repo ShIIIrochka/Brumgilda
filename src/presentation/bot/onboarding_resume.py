@@ -26,6 +26,12 @@ async def _need_last_name(
     return Onboarding.last_name if not d.get(dk.LAST_NAME) else None
 
 
+async def _need_age(
+    _user: User, d: dict, _dirs: IDirectionRepository
+) -> State | None:
+    return Onboarding.age if d.get(dk.AGE) is None else None
+
+
 async def _need_direction(
     _user: User, d: dict, _dirs: IDirectionRepository
 ) -> State | None:
@@ -107,6 +113,7 @@ async def _need_team_mode(
 RESUME_PIPELINE: tuple[ResumeStep, ...] = (
     _need_first_name,
     _need_last_name,
+    _need_age,
     _need_direction,
     _need_custom_direction,
     _need_user_status,
