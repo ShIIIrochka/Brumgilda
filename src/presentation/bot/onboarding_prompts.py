@@ -32,6 +32,12 @@ async def _p_last_name(
     await target.answer("Фамилия?")
 
 
+async def _p_age(
+    target: Message, _state: FSMContext, _c: Container, _uid: UUID
+) -> None:
+    await target.answer("Сколько тебе лет? (число от 10 до 100)")
+
+
 async def _p_direction_pick(
     target: Message, state: FSMContext, c: Container, _uid: UUID
 ) -> None:
@@ -140,6 +146,7 @@ def _state_key(st: State) -> str:
 ONBOARDING_PROMPTS: dict[str, PromptSender] = {
     _state_key(Onboarding.first_name): _p_first_name,
     _state_key(Onboarding.last_name): _p_last_name,
+    _state_key(Onboarding.age): _p_age,
     _state_key(Onboarding.direction_pick): _p_direction_pick,
     _state_key(Onboarding.direction_custom): _p_direction_custom,
     _state_key(Onboarding.user_status): _p_user_status,

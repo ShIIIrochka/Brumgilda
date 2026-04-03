@@ -48,6 +48,7 @@ class UserModel(Base):
 
     first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     direction_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("directions.id", ondelete="SET NULL"), nullable=True
     )
@@ -67,6 +68,8 @@ class UserModel(Base):
     olympiad_links: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default="[]")
 
     team_seeking_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    telegram_avatar_file_id: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     identities: Mapped[list[UserIdentityModel]] = relationship(
         "UserIdentityModel", back_populates="user", cascade="all, delete-orphan"

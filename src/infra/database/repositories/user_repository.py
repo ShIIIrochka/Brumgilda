@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.domain.user.enums import TeamSeekingMode, UserStatus
 from src.domain.user.user import User
+from src.domain.user.value_objects import SearchFilter, SearchResult
 from src.infra.database.models import UserModel
 
 
@@ -27,6 +29,30 @@ class SqlAlchemyUserRepository:
         _to_row(user, row)
         await self._session.flush()
 
+    async def search(self, fltr: SearchFilter, offset: int, limit: int) -> SearchResult:
+        base = select(UserModel).where(
+            UserModel.onboarding_completed_at.isnot(None),
+            UserModel.id != fltr.exclude_user_id,
+            UserModel.team_seeking_mode == fltr.seeking_mode.value,
+        )
+        if fltr.direction_id is not None:
+            base = base.where(UserModel.direction_id == fltr.direction_id)
+        if fltr.user_status is not None:
+            base = base.where(UserModel.user_status == fltr.user_status.value)
+
+        count_q = select(func.count()).select_from(base.subquery())
+        total = (await self._session.execute(count_q)).scalar_one()
+
+        rows_q = base.order_by(UserModel.created_at.desc()).offset(offset).limit(limit)
+        rows = (await self._session.execute(rows_q)).scalars().all()
+
+        return SearchResult(
+            users=[_to_entity(r) for r in rows],
+            total=total,
+            offset=offset,
+            limit=limit,
+        )
+
 
 def _to_entity(row: UserModel) -> User:
     return User(
@@ -35,6 +61,8 @@ def _to_entity(row: UserModel) -> User:
         onboarding_draft=dict(row.onboarding_draft or {}),
         first_name=row.first_name,
         last_name=row.last_name,
+        age=row.age,
+        telegram_avatar_file_id=row.telegram_avatar_file_id,
         direction_id=row.direction_id,
         custom_direction_label=row.custom_direction_label,
         user_status=UserStatus(row.user_status) if row.user_status else None,
@@ -55,6 +83,8 @@ def _to_row(user: User, row: UserModel) -> None:
     row.onboarding_draft = user.onboarding_draft
     row.first_name = user.first_name
     row.last_name = user.last_name
+    row.age = user.age
+    row.telegram_avatar_file_id = user.telegram_avatar_file_id
     row.direction_id = user.direction_id
     row.custom_direction_label = user.custom_direction_label
     row.user_status = user.user_status.value if user.user_status else None

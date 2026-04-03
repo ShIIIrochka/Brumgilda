@@ -134,3 +134,77 @@ def parse_dir_callback(data: str) -> UUID | str | None:
         return UUID(payload)
     except ValueError:
         return None
+
+
+def profile_edit_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text="Имя", callback_data="pedit:first_name"),
+                InlineKeyboardButton(text="Фамилия", callback_data="pedit:last_name"),
+                InlineKeyboardButton(text="Возраст", callback_data="pedit:age"),
+            ],
+            [
+                InlineKeyboardButton(text="Направление", callback_data="pedit:direction"),
+                InlineKeyboardButton(text="Статус", callback_data="pedit:user_status"),
+            ],
+            [
+                InlineKeyboardButton(text="Режим поиска", callback_data="pedit:team_mode"),
+            ],
+        ]
+    )
+
+
+def search_status_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="Школьник", callback_data=f"sst:{UserStatus.SCHOOL.value}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Студент", callback_data=f"sst:{UserStatus.STUDENT.value}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Магистрант", callback_data=f"sst:{UserStatus.MASTER.value}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="Не учусь", callback_data=f"sst:{UserStatus.NOT_STUDYING.value}"
+                )
+            ],
+            [
+                InlineKeyboardButton(text="Любой", callback_data="sst:any")
+            ],
+        ]
+    )
+
+
+def search_direction_keyboard(
+    directions: list[Direction], *, show_back: bool
+) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = [
+        [InlineKeyboardButton(text=d.name, callback_data=f"sdir:{d.id}")]
+        for d in directions
+    ]
+    rows.insert(0, [InlineKeyboardButton(text="Любое направление", callback_data="sdir:any")])
+    if show_back:
+        rows.append([InlineKeyboardButton(text="Назад", callback_data="sdir:back")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def search_pagination_keyboard(offset: int, total: int) -> InlineKeyboardMarkup:
+    buttons: list[InlineKeyboardButton] = []
+    if offset > 0:
+        buttons.append(InlineKeyboardButton(text="<<", callback_data="spg:prev"))
+    buttons.append(
+        InlineKeyboardButton(text=f"{offset + 1}/{total}", callback_data="spg:noop")
+    )
+    if offset + 1 < total:
+        buttons.append(InlineKeyboardButton(text=">>", callback_data="spg:next"))
+    return InlineKeyboardMarkup(inline_keyboard=[buttons])

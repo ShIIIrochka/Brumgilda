@@ -32,6 +32,8 @@ class User:
         olympiad_description: str | None = None,
         olympiad_links: list[str] | None = None,
         team_seeking_mode: TeamSeekingMode | None = None,
+        age: int | None = None,
+        telegram_avatar_file_id: str | None = None,
     ) -> None:
         self.id = id
         self.onboarding_completed_at = onboarding_completed_at
@@ -50,6 +52,8 @@ class User:
         self.olympiad_description = olympiad_description
         self.olympiad_links = olympiad_links if olympiad_links is not None else []
         self.team_seeking_mode = team_seeking_mode
+        self.age = age
+        self.telegram_avatar_file_id = telegram_avatar_file_id
 
     @classmethod
     def create_new(cls) -> User:
@@ -75,6 +79,7 @@ class User:
             return {
                 dk.FIRST_NAME: self.first_name,
                 dk.LAST_NAME: self.last_name,
+                dk.AGE: self.age,
                 dk.DIRECTION_ID: str(self.direction_id) if self.direction_id else None,
                 dk.CUSTOM_DIRECTION_LABEL: self.custom_direction_label,
                 dk.USER_STATUS: self.user_status.value if self.user_status else None,
@@ -102,6 +107,11 @@ class User:
 
         req(dk.FIRST_NAME)
         req(dk.LAST_NAME)
+        age_val = d.get(dk.AGE)
+        if age_val is None:
+            errors.append(dk.AGE)
+        elif not isinstance(age_val, int) or not (10 <= age_val <= 100):
+            errors.append(dk.AGE)
         dir_id = d.get(dk.DIRECTION_ID)
         custom = d.get(dk.CUSTOM_DIRECTION_LABEL)
         if not dir_id and not (custom and str(custom).strip()):
@@ -157,6 +167,7 @@ class User:
 
         self.first_name = str(d[dk.FIRST_NAME]).strip()
         self.last_name = str(d[dk.LAST_NAME]).strip()
+        self.age = int(d[dk.AGE])
         raw_dir = d.get(dk.DIRECTION_ID)
         self.direction_id = UUID(str(raw_dir)) if raw_dir else None
         cdl = d.get(dk.CUSTOM_DIRECTION_LABEL)
@@ -179,3 +190,38 @@ class User:
 
         self.onboarding_completed_at = datetime.now(tz=UTC)
         self.onboarding_draft = {}
+
+    def update_profile(self, updates: dict[str, Any]) -> None:
+        if not self.is_onboarding_complete:
+            raise DomainValidationError("Cannot update profile before onboarding is complete")
+        for key, value in updates.items():
+            if key == dk.FIRST_NAME:
+                if not value or not str(value).strip():
+                    raise DomainValidationError("first_name is required")
+                self.first_name = str(value).strip()
+            elif key == dk.LAST_NAME:
+                if not value or not str(value).strip():
+                    raise DomainValidationError("last_name is required")
+                self.last_name = str(value).strip()
+            elif key == dk.AGE:
+                if not isinstance(value, int) or not (10 <= value <= 100):
+                    raise DomainValidationError("age must be between 10 and 100")
+                self.age = value
+            elif key == dk.DIRECTION_ID:
+                self.direction_id = UUID(str(value)) if value else None
+            elif key == dk.CUSTOM_DIRECTION_LABEL:
+                self.custom_direction_label = str(value).strip() if value else None
+            elif key == dk.USER_STATUS:
+                self.user_status = UserStatus(str(value))
+            elif key == dk.TEAM_SEEKING_MODE:
+                self.team_seeking_mode = TeamSeekingMode(str(value))
+            elif key == dk.SCHOOL_GRADE:
+                self.school_grade = int(value) if value is not None else None
+            elif key == dk.SCHOOL_NAME:
+                self.school_name = str(value).strip() if value else None
+            elif key == dk.STUDENT_COURSE:
+                self.student_course = int(value) if value is not None else None
+            elif key == dk.UNIVERSITY:
+                self.university = str(value).strip() if value else None
+            elif key == dk.SPECIALTY:
+                self.specialty = str(value).strip() if value else None

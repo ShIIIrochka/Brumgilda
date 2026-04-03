@@ -9,6 +9,8 @@ from src.application.usecases.user.patch_onboarding_draft import PatchOnboarding
 from src.application.usecases.user.resolve_or_create_user_by_external_identity import (
     ResolveOrCreateUserByExternalIdentity,
 )
+from src.application.usecases.user.update_user_profile import UpdateUserProfile
+from src.application.usecases.user.search_users import SearchUsers
 from src.domain.directions.repository import IDirectionRepository
 from src.domain.user.repositories import IUserIdentityRepository, IUserRepository
 from src.infra.database.repositories.direction_repository import (
@@ -30,4 +32,6 @@ def build_container(session: AsyncSession) -> punq.Container:
     container.register(PatchOnboardingDraft)
     container.register(CompleteOnboarding)
     container.register(GetUser)
+    container.register(UpdateUserProfile)
+    container.register(SearchUsers)
     return container
