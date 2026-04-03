@@ -63,6 +63,7 @@ def _to_entity(row: UserModel) -> User:
         last_name=row.last_name,
         age=row.age,
         telegram_avatar_file_id=row.telegram_avatar_file_id,
+        avatar_url=row.avatar_url,
         direction_id=row.direction_id,
         custom_direction_label=row.custom_direction_label,
         user_status=UserStatus(row.user_status) if row.user_status else None,
@@ -85,6 +86,7 @@ def _to_row(user: User, row: UserModel) -> None:
     row.last_name = user.last_name
     row.age = user.age
     row.telegram_avatar_file_id = user.telegram_avatar_file_id
+    row.avatar_url = user.avatar_url
     row.direction_id = user.direction_id
     row.custom_direction_label = user.custom_direction_label
     row.user_status = user.user_status.value if user.user_status else None

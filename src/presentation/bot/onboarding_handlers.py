@@ -16,6 +16,7 @@ from src.domain.user import draft_keys as dk
 from src.domain.user.enums import TeamSeekingMode
 from src.domain.user.exceptions import DomainValidationError
 from src.presentation.bot import keyboards as kb
+from src.presentation.bot.avatar_utils import persist_telegram_avatar_file_id
 from src.presentation.bot.onboarding_prompts import send_onboarding_prompt
 from src.presentation.bot.onboarding_resume import compute_resume_state
 from src.presentation.bot.states import Onboarding
@@ -88,7 +89,7 @@ async def cmd_start(
 async def on_finish_registration(
     cq: CallbackQuery, state: FSMContext, container: Container, user_id: UUID | None
 ) -> None:
-    if user_id is None or cq.message is None:
+    if user_id is None or cq.message is None or cq.from_user is None:
         return
     await cq.answer()
     try:
@@ -96,6 +97,7 @@ async def on_finish_registration(
     except DomainValidationError as e:
         await cq.message.answer(f"Проверьте данные: {e}")
         return
+    await persist_telegram_avatar_file_id(cq.bot, container, user_id, cq.from_user.id)
     await state.clear()
     await cq.message.answer("Регистрация завершена. Удачи в поиске команды!")
 

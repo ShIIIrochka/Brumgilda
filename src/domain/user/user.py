@@ -34,6 +34,7 @@ class User:
         team_seeking_mode: TeamSeekingMode | None = None,
         age: int | None = None,
         telegram_avatar_file_id: str | None = None,
+        avatar_url: str | None = None,
     ) -> None:
         self.id = id
         self.onboarding_completed_at = onboarding_completed_at
@@ -54,6 +55,7 @@ class User:
         self.team_seeking_mode = team_seeking_mode
         self.age = age
         self.telegram_avatar_file_id = telegram_avatar_file_id
+        self.avatar_url = avatar_url
 
     @classmethod
     def create_new(cls) -> User:
@@ -225,3 +227,7 @@ class User:
                 self.university = str(value).strip() if value else None
             elif key == dk.SPECIALTY:
                 self.specialty = str(value).strip() if value else None
+            elif key == dk.TELEGRAM_AVATAR_FILE_ID:
+                self.telegram_avatar_file_id = str(value) if value else None
+            elif key == dk.AVATAR_URL:
+                self.avatar_url = str(value).strip() if value else None

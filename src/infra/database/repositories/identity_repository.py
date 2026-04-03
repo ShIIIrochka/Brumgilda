@@ -34,3 +34,14 @@ class SqlAlchemyUserIdentityRepository:
         )
         self._session.add(row)
         await self._session.flush()
+
+    async def find_subject_id_for_user(
+        self, user_id: UUID, provider: IdentityProvider
+    ) -> str | None:
+        result = await self._session.execute(
+            select(UserIdentityModel.subject_id).where(
+                UserIdentityModel.user_id == user_id,
+                UserIdentityModel.provider == provider.value,
+            )
+        )
+        return result.scalar_one_or_none()
