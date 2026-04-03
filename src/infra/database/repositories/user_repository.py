@@ -39,6 +39,8 @@ class SqlAlchemyUserRepository:
             base = base.where(UserModel.direction_id == fltr.direction_id)
         if fltr.user_status is not None:
             base = base.where(UserModel.user_status == fltr.user_status.value)
+        if fltr.specialty_query:
+            base = base.where(UserModel.specialty.ilike(f"%{fltr.specialty_query}%"))
 
         count_q = select(func.count()).select_from(base.subquery())
         total = (await self._session.execute(count_q)).scalar_one()

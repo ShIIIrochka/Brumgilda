@@ -11,6 +11,7 @@ from src.domain.user.user import User
 class SearchFilter:
     direction_id: UUID | None
     user_status: UserStatus | None
+    specialty_query: str | None
     exclude_user_id: UUID
     seeking_mode: TeamSeekingMode
 

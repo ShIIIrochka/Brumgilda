@@ -95,9 +95,12 @@ async def _show_result(
         else TeamSeekingMode.LOOKING_FOR_PEOPLE
     )
 
+    specialty_q = data.get("search_specialty")
+
     fltr = SearchFilter(
         direction_id=UUID(direction_id) if direction_id else None,
         user_status=UserStatus(status_raw) if status_raw else None,
+        specialty_query=specialty_q or None,
         exclude_user_id=user_id,
         seeking_mode=opposite_mode,
     )
@@ -143,7 +146,7 @@ async def cmd_search(
     dirs = container.resolve(IDirectionRepository)
     roots = await dirs.list_roots()
     await state.set_state(Search.pick_direction)
-    await state.update_data(search_direction_id=None, search_status=None, search_offset=0)
+    await state.update_data(search_direction_id=None, search_status=None, search_specialty=None, search_offset=0)
     await message.answer(
         "Поиск сокомандников. Выберите направление:",
         reply_markup=kb.search_direction_keyboard(roots, show_back=False),
@@ -220,8 +223,28 @@ async def on_search_status(
     raw = (cq.data or "")[4:]
     status_val = None if raw == "any" else raw
     await state.update_data(search_status=status_val, search_offset=0)
+    if status_val in (UserStatus.STUDENT.value, UserStatus.MASTER.value):
+        await state.set_state(Search.pick_specialty)
+        await cq.message.answer(
+            "Введите специальность для поиска (или отправьте «-» чтобы пропустить):"
+        )
+        return
+    await state.update_data(search_specialty=None)
     await state.set_state(Search.browsing)
     await _show_result(cq.message, container, state, cq.bot, user_id)
+
+
+@router.message(Search.pick_specialty, F.text)
+async def on_search_specialty(
+    message: Message, state: FSMContext, container: Container, user_id: UUID | None
+) -> None:
+    if user_id is None:
+        return
+    text = (message.text or "").strip()
+    spec_val = None if text == "-" else text
+    await state.update_data(search_specialty=spec_val, search_offset=0)
+    await state.set_state(Search.browsing)
+    await _show_result(message, container, state, message.bot, user_id)
 
 
 @router.callback_query(Search.browsing, F.data == "spg:prev")
